@@ -5,7 +5,7 @@ import { FAILED_MESSAGES } from "../constant/messages";
 export const authRequestValidator = (req: Request<{},{}, AuthRequest>, res: Response<AuthResponse>, next: NextFunction) => {
     const email: string = req.body.email;
     const password: string = req.body.password;     
-    if(!email) {
+    if(!email || !password) {
         res.status(400).json({message: FAILED_MESSAGES.EMAIL_IS_REQUIRED});
         res.end()
         return; 
