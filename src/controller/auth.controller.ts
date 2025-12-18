@@ -42,11 +42,21 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
             }
         });
 
-        // generate access token
+        // generate token
         const userData = _.pick(newUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        res.status(201).json({message: SUCCESS_MESSAGES.USER_CREATED, token: accessToken, refreshToken: refreshToken});    
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+        });
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+        });
+        res.status(201).json({message: SUCCESS_MESSAGES.USER_CREATED});    
         return  
 
     }catch(error) {
@@ -82,7 +92,17 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
         const userData = _.pick(existingUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        res.status(200).json({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL, token: accessToken, refreshToken: refreshToken});    
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+        });
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+        }); 
+        res.status(200).json({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL});    
         return 
     }catch(error) {
         console.error(error)
