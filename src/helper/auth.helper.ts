@@ -11,3 +11,4 @@ export const validatePassword = async (
 ): Promise<boolean> => {
   return await bcrypt.compare(userPass, hashedPass);
 };
+
