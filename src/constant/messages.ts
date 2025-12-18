@@ -22,6 +22,7 @@ export const FAILED_MESSAGES = {
   INVALID_CREDENTIALS: "Invalid credentials",
   INVALID_PASSWORD: "Invalid password",
   USER_NOT_FOUND: "User not found",
+  USER_EXISTS: "User already exists",
 };
 
 export const ERROR_MESSAGES = {

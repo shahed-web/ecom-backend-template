@@ -4,13 +4,13 @@ import { prisma } from '../lib/prisma';
 import { ERROR_MESSAGES, FAILED_MESSAGES, SUCCESS_MESSAGES } from '../constant/messages';
 import { hashPassword, validatePassword } from '../helper/auth.helper';
 
-interface AuthRequest {
+export interface AuthRequest {
   name?: string;
   email: string;
   password: string;
 }
 
-interface AuthResponse {
+export interface AuthResponse {
   message: string;
   token?: string;
 }
@@ -18,14 +18,16 @@ interface AuthResponse {
 export const register = async (req: Request<{},{}, AuthRequest>, res: Response<AuthResponse>) => {
     try {
         const email: string = req.body.email;
-        const password: string = req.body.password;     
-        if(!email) {
-            res.status(400).json({message: FAILED_MESSAGES.EMAIL_IS_REQUIRED});
-            res.end()
-            return; 
-        }   
-        if(!password) {
-            res.status(400).json({message: FAILED_MESSAGES.PASSWORD_IS_REQUIRED});
+        const password: string = req.body.password;       
+
+        const existingUser =  await prisma.user.findUnique({
+            where: {
+                email: email
+            }
+        }); 
+
+        if (existingUser) {
+            res.status(400).json({message: FAILED_MESSAGES.USER_EXISTS});
             res.end()
             return; 
         }   
@@ -56,18 +58,6 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
     try {
         const email: string = req.body.email;
         const password: string = req.body.password;
-
-        if(!email) {
-            res.status(400).json({message: FAILED_MESSAGES.EMAIL_IS_REQUIRED});
-            res.end()
-            return; 
-        }
-
-        if(!password) {
-            res.status(400).json({message: FAILED_MESSAGES.PASSWORD_IS_REQUIRED});
-            res.end()
-            return; 
-        }
 
         const existingUser = await prisma.user.findUnique({
             where: {
