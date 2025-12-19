@@ -4,12 +4,12 @@ import { envConfig } from "../config/env.config";
 
 
 
-export const hashPassword = async (password: string): Promise<string> => {
+export const hashString = async (password: string): Promise<string> => {
   const salt = await bcrypt.genSalt(10);
   return await bcrypt.hash(password, salt);
 };
 
-export const validatePassword = async (
+export const validateString = async (
   userPass: string,
   hashedPass: string
 ): Promise<boolean> => {
