@@ -6,7 +6,6 @@ import { generateJWT, hashString, validateString } from '../helper/auth.helper';
 import { envConfig } from '../config/env.config';
 
 export interface AuthRequest {
-  name?: string;
   email: string;
   password: string;
 }
@@ -42,15 +41,22 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
             }
         });
 
-        // generate token
         const userData = _.pick(newUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
         const hashedToken: string = await hashString(refreshToken)
 
+        const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+        
+        const now = Date.now()
+        // TTL storing in ms
+        const refreshTokenTTL = new Date(now + refreshTokenExpiry)
+
         await prisma.refreshToken.create({
             data : {
-                hashedToken: hashedToken
+                userId: userData.id,
+                hashedToken: hashedToken,
+                expiresAt: refreshTokenTTL
             }
         })
 
@@ -96,18 +102,26 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
             res.status(400).json({message: FAILED_MESSAGES.INVALID_CREDENTIALS});
             return
         }   
-        // generate token
+        
         const userData = _.pick(existingUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
         const hashedToken: string = await hashString(refreshToken)
 
+        const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+        
+        const now = Date.now()
+        // TTL storing in ms
+        const refreshTokenTTL = new Date(now + refreshTokenExpiry)
+
         await prisma.refreshToken.create({
             data : {
-                hashedToken: hashedToken
+                userId: userData.id,
+                hashedToken: hashedToken,
+                expiresAt: refreshTokenTTL
             }
         })
-        
+                
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: true,

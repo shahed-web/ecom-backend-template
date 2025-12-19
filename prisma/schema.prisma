@@ -14,19 +14,23 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now()) @db.Timestamp(0)
-  updatedAt DateTime @updatedAt
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  password     String
+  role         Role           @default(USER)
+  refreshToken RefreshToken[]
+  createdAt    DateTime       @default(now()) @db.Timestamp(3)
+  updatedAt    DateTime       @updatedAt
 }
 
 model RefreshToken {
   id          Int      @id @default(autoincrement())
   hashedToken String   @unique
-  createdAt   DateTime @default(now()) @db.Timestamp(0)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  expiresAt   DateTime @db.Timestamptz(3)
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamp(3)
   updatedAt   DateTime @updatedAt
 }
 
