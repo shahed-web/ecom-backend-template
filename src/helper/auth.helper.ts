@@ -2,8 +2,6 @@ import bcrypt from "bcrypt";
 import jwt, {type JwtPayload } from "jsonwebtoken";
 import { envConfig } from "../config/env.config";
 
-
-
 export const hashString = async (password: string): Promise<string> => {
   const salt = await bcrypt.genSalt(10);
   return await bcrypt.hash(password, salt);
@@ -16,9 +14,17 @@ export const validateString = async (
   return await bcrypt.compare(userPass, hashedPass);
 };
 
+export const encryptString = (text:string) : string => {
+  return Buffer.from(text, 'utf8').toString('base64')
+}
+
+export const decryptString = (encoded: string):string => {
+  return Buffer.from(encoded, 'base64').toString('utf8')
+}
+
 
 export interface UserDataPayload extends JwtPayload {
-  _id: string;
+  id: number;
   email: string;
   role: string;
 }
@@ -35,7 +41,7 @@ export const generateJWT = (
 ): string => {
   return jwt.sign(
     {
-      _id: userData.id,
+      id: userData.id,
       email: userData.email,
       role: userData.role,
     },
@@ -50,3 +56,4 @@ export const jwtVerify = (token: string): UserDataPayload => {
     envConfig.JWT.JWT_SECRET_KEY
   ) as UserDataPayload;
 };
+

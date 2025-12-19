@@ -1,6 +1,7 @@
 export const SUCCESS_MESSAGES = {
   USER_CREATED: "Signup successful",
   LOGIN_SUCCESSFUL: "Login successful",
+  NEW_ACCESS_TOKEN: "New access token",
   PRODUCT_CREATED: "Product created successfully",
   PRODUCT_UPDATED: "Product updated successfully",
   PRODUCT_DELETED: "Product deleted successfully",

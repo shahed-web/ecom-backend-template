@@ -2,7 +2,7 @@ import _ from 'lodash';
 import {type Request, type Response} from 'express';
 import { prisma } from '../lib/prisma';
 import { ERROR_MESSAGES, FAILED_MESSAGES, SUCCESS_MESSAGES } from '../constant/messages';
-import { generateJWT, hashString, validateString } from '../helper/auth.helper';
+import { encryptString, generateJWT, hashString, jwtVerify, validateString, type UserDataPayload } from '../helper/auth.helper';
 import { envConfig } from '../config/env.config';
 
 export interface AuthRequest {
@@ -44,7 +44,7 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
         const userData = _.pick(newUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        const hashedToken: string = await hashString(refreshToken)
+        const hashedToken: string = encryptString(refreshToken)
 
         const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
         
@@ -106,7 +106,7 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
         const userData = _.pick(existingUser, ["id", "email", "role"]);
         const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
         const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        const hashedToken: string = await hashString(refreshToken)
+        const hashedToken: string = encryptString(refreshToken)
 
         const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
         
@@ -139,4 +139,23 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
         res.status(500).json({message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR});
         return; 
     }
+}
+
+export const refreshTokenHandler = async (req: Request, res: Response) => {
+    const refreshToken: string | null = req.cookies.refreshToken
+    if(!refreshToken) {
+        return res.status(401).send({
+            message: FAILED_MESSAGES.UNAUTHORIZED
+        })   
+    }
+    try {
+        const tokenPayload = jwtVerify(refreshToken) as UserDataPayload
+        const newAccessToken = generateJWT(_.pick(tokenPayload, ["id", "email", "role"]), envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN)
+        return res.status(200).send({message: SUCCESS_MESSAGES.NEW_ACCESS_TOKEN, token: newAccessToken})
+    } catch(error) {        
+        console.log(error)
+        return res.status(401).send({
+            message:FAILED_MESSAGES.UNAUTHORIZED
+        })
+    }   
 }
