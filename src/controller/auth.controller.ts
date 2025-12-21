@@ -2,7 +2,7 @@ import _ from 'lodash';
 import {type Request, type Response} from 'express';
 import { prisma } from '../lib/prisma';
 import { ERROR_MESSAGES, FAILED_MESSAGES, SUCCESS_MESSAGES } from '../constant/messages';
-import { decryptString, encryptString, generateJWT, hashString, jwtVerify, validateString, type UserDataPayload } from '../helper/auth.helper';
+import { decryptString, encryptString, generateJWT, hashString, jwtDecode, jwtVerify, validateString, type UserDataPayload } from '../helper/auth.helper';
 import { envConfig } from '../config/env.config';
 
 export interface AuthRequest {
@@ -149,7 +149,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
         })   
     }
     try {
-        const tokenPayload = jwtVerify(refreshToken) as UserDataPayload
+        const tokenPayload = jwtDecode(refreshToken) as UserDataPayload
         const userId: number = tokenPayload.id as number
         const storedToken = await prisma.refreshToken.findFirst({
             where: {
@@ -157,23 +157,26 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
             }
         })
         const decryptedStoredToken = storedToken ? decryptString(storedToken.hashedToken) : null
+        
         if(!storedToken || decryptedStoredToken !== refreshToken) {
             return res.status(403).send({
                 message: FAILED_MESSAGES.UNAUTHORIZED
             })   
         }   
-        const varifyStoredTokenPayload = jwtVerify(decryptedStoredToken) as UserDataPayload
-        if(!varifyStoredTokenPayload) {
+
+        if(storedToken.expiresAt.getTime() < Date.now()) {
             await prisma.refreshToken.deleteMany({
                 where: {
                     userId: userId
                 }
             })  
-            return res.status(403).send({message: FAILED_MESSAGES.UNAUTHORIZED})
+            return res.status(401).send({message: FAILED_MESSAGES.UNAUTHORIZED})
         }
+        jwtVerify(refreshToken)       
         const newAccessToken = generateJWT(_.pick(tokenPayload, ["id", "email", "role"]), envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN)
         return res.status(200).send({message: SUCCESS_MESSAGES.NEW_ACCESS_TOKEN, token: newAccessToken})
     } catch(error) {      
+        console.log(error)
         return res.status(401).send({
             message:FAILED_MESSAGES.UNAUTHORIZED
         })

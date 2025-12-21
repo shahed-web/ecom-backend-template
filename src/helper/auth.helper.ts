@@ -57,3 +57,7 @@ export const jwtVerify = (token: string): UserDataPayload => {
   ) as UserDataPayload;
 };
 
+
+export const jwtDecode = (token:string): UserDataPayload => {
+  return jwt.decode(token) as UserDataPayload
+}
