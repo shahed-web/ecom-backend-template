@@ -159,7 +159,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
         const decryptedStoredToken = storedToken ? decryptString(storedToken.hashedToken) : null
         
         if(!storedToken || decryptedStoredToken !== refreshToken) {
-            return res.status(403).send({
+            return res.status(401).send({
                 message: FAILED_MESSAGES.UNAUTHORIZED
             })   
         }   
@@ -172,7 +172,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
             })  
             return res.status(401).send({message: FAILED_MESSAGES.UNAUTHORIZED})
         }
-        jwtVerify(refreshToken)       
+        if (!jwtVerify(refreshToken)) return res.status(401).send({message: FAILED_MESSAGES.UNAUTHORIZED})       
         const newAccessToken = generateJWT(_.pick(tokenPayload, ["id", "email", "role"]), envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN)
         return res.status(200).send({message: SUCCESS_MESSAGES.NEW_ACCESS_TOKEN, token: newAccessToken})
     } catch(error) {      

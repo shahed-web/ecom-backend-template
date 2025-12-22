@@ -19,6 +19,7 @@ declare global {
 export const checkAuth = (req: Request, res: Response, next: NextFunction) => {
     try {
         const accessToken: string = req.cookies.accessToken;
+        if (!accessToken) return res.status(403).send({message: FAILED_MESSAGES.ACCESS_TOKEN_MISSING})
         const userPayload = jwtVerify(accessToken)
         req.user = _.pick(userPayload, ["id", "email", "role"])
         next()

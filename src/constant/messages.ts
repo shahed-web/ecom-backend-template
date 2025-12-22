@@ -9,6 +9,7 @@ export const SUCCESS_MESSAGES = {
 
 export const FAILED_MESSAGES = {
   UNAUTHORIZED: "Unauthorized",
+  ACCESS_TOKEN_MISSING: "Access token missing",
   SIGNUP_FAILED: "Signup failed. Please check your details.",
   VALIDATION_FAILED: "Validation failed",
   EMAIL_IS_REQUIRED: "Email is required",
