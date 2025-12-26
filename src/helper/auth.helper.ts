@@ -1,3 +1,4 @@
+import {prisma} from "../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt, {type JwtPayload } from "jsonwebtoken";
 import { envConfig } from "../config/env.config";
@@ -25,18 +26,18 @@ export const decryptString = (encoded: string):string => {
 
 export interface UserDataPayload extends JwtPayload {
   id: number;
-  email: string;
+  email: string | null;
   role: string;
 }
 
 interface User {
   id: number;
-  email: string;
+  email: string | null;
   role: string;
 }
 
 export const generateJWT = (
-  userData: User,
+  userData: UserDataPayload,
   expiry: number
 ): string => {
   return jwt.sign(
@@ -60,4 +61,31 @@ export const jwtVerify = (token: string): UserDataPayload => {
 
 export const jwtDecode = (token:string): UserDataPayload => {
   return jwt.decode(token) as UserDataPayload
+}
+
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export const issueToken = async (user : UserDataPayload): Promise<TokenPair> => {
+    const accessToken = generateJWT(user, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
+    const refreshToken = generateJWT(user, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
+    
+    const hashedToken: string = encryptString(refreshToken)
+
+    const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+    const now = Date.now()
+    // TTL storing in ms
+    const refreshTokenTTL = new Date(now + refreshTokenExpiry)
+    
+    await prisma.refreshToken.create({
+        data: {
+            userId: user.id,
+            hashedToken: hashedToken,
+            expiresAt: refreshTokenTTL
+        }
+    });      
+  return { accessToken, refreshToken };
 }

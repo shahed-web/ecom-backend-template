@@ -9,6 +9,13 @@ interface EnvConfig {
     JWT_SECRET_KEY: string,
     ACCESS_TOKEN_EXPIRES_IN: number,
     REFRESH_TOKEN_EXPIRES_IN: number
+  },
+  OAUTH: {
+    GOOGLE: {
+      CLIENT_ID: string,
+      CLIENT_SECRET: string,
+      REDIRECT_URI: string
+    }
   }
 }
 
@@ -19,5 +26,12 @@ export const envConfig: EnvConfig = {
     JWT_SECRET_KEY: process.env.JWT_SECRET_KEY as string,
     ACCESS_TOKEN_EXPIRES_IN: Number(process.env.ACCESS_TOKEN_EXPIRES_IN) as number,
     REFRESH_TOKEN_EXPIRES_IN: Number(process.env.REFRESH_TOKEN_EXPIRES_IN) as number    
+  },
+  OAUTH:{
+    GOOGLE: {
+      CLIENT_ID: process.env.GOOGLE_CLIENT_ID as string,
+      CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET as string,
+      REDIRECT_URI : process.env.GOOGLE_REDIRECT_URI as string   
+    }
   }
 }

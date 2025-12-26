@@ -1,6 +1,7 @@
 import express, { type Application } from 'express';
 import routes from './routes';
 import middleware from './middleware';
+import "./lib/passport-oauth";
 
 export const app: Application = express();
 

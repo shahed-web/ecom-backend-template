@@ -15,9 +15,11 @@ datasource db {
 
 model User {
   id           Int            @id @default(autoincrement())
-  email        String         @unique
-  password     String
+  email        String?         @unique
+  password     String?
   role         Role           @default(USER)
+  googleId     String?        @unique
+  facebookId   String?        @unique
   refreshToken RefreshToken[]
   createdAt    DateTime       @default(now()) @db.Timestamp(3)
   updatedAt    DateTime       @updatedAt

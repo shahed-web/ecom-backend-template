@@ -2,7 +2,7 @@ import _ from 'lodash';
 import {type Request, type Response} from 'express';
 import { prisma } from '../lib/prisma';
 import { ERROR_MESSAGES, FAILED_MESSAGES, SUCCESS_MESSAGES } from '../constant/messages';
-import { decryptString, encryptString, generateJWT, hashString, jwtDecode, jwtVerify, validateString, type UserDataPayload } from '../helper/auth.helper';
+import { decryptString, encryptString, generateJWT, hashString, issueToken, jwtDecode, jwtVerify, validateString, type TokenPair, type UserDataPayload } from '../helper/auth.helper';
 import { envConfig } from '../config/env.config';
 
 export interface AuthRequest {
@@ -42,33 +42,18 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
         });
 
         const userData = _.pick(newUser, ["id", "email", "role"]);
-        const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
-        const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        const hashedToken: string = encryptString(refreshToken)
-
-        const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
-        
-        const now = Date.now()
-        // TTL storing in ms
-        const refreshTokenTTL = new Date(now + refreshTokenExpiry)
-
-        await prisma.refreshToken.create({
-            data : {
-                userId: userData.id,
-                hashedToken: hashedToken,
-                expiresAt: refreshTokenTTL
-            }
-        })
+        const {accessToken, refreshToken} = await issueToken(userData as UserDataPayload)
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
-        });
-        res.cookie('accessToken', accessToken, {
+            maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+        }).cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
+            maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
         });
         res.status(201).json({message: SUCCESS_MESSAGES.USER_CREATED});    
         return  
@@ -91,11 +76,12 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
             }
         });
         
-        if (!existingUser) {
+        if (!existingUser || existingUser.password === null) {
             res.status(400).json({message: FAILED_MESSAGES.INVALID_EMAIL_ADDRESS});
             return
         }     
 
+        
         const isPasswordValid: boolean = await validateString(password, existingUser.password);
 
         if (!isPasswordValid) {
@@ -104,33 +90,19 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
         }   
         
         const userData = _.pick(existingUser, ["id", "email", "role"]);
-        const accessToken: string =  generateJWT(userData, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN);
-        const refreshToken: string =  generateJWT(userData, envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN);
-        const hashedToken: string = encryptString(refreshToken)
 
-        const refreshTokenExpiry: number = envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
-        
-        const now = Date.now()
-        // TTL storing in ms
-        const refreshTokenTTL = new Date(now + refreshTokenExpiry)
-
-        await prisma.refreshToken.create({
-            data : {
-                userId: userData.id,
-                hashedToken: hashedToken,
-                expiresAt: refreshTokenTTL
-            }
-        })
+        const { accessToken, refreshToken } = await issueToken(userData as UserDataPayload)
                 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
-        });
-        res.cookie('accessToken', accessToken, {
+            maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+        }).cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
+            maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
         }); 
         res.status(200).json({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL});    
         return 
@@ -173,7 +145,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
             return res.status(401).send({message: FAILED_MESSAGES.UNAUTHORIZED})
         }
         if (!jwtVerify(refreshToken)) return res.status(401).send({message: FAILED_MESSAGES.UNAUTHORIZED})       
-        const newAccessToken = generateJWT(_.pick(tokenPayload, ["id", "email", "role"]), envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN)
+        const newAccessToken = generateJWT(tokenPayload, envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN)
         return res.status(200).send({message: SUCCESS_MESSAGES.NEW_ACCESS_TOKEN, token: newAccessToken})
     } catch(error) {      
         console.log(error)
@@ -181,4 +153,23 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
             message:FAILED_MESSAGES.UNAUTHORIZED
         })
     }   
+}
+
+export const googleAuth = (req: Request, res: Response) => {
+    const { accessToken, refreshToken } = req.user as any;
+    res
+        .cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+        })
+        .cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
+        })
+        .status(200).send({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL});
+        // res.redirect("http://localhost:3000/api/auth/google/callback");
 }
