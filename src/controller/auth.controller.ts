@@ -20,6 +20,7 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
     try {
         const email: string = req.body.email;
         const password: string = req.body.password;       
+        const generatedHashedPassword: string = await hashString(password);
 
         const existingUser =  await prisma.user.findUnique({
             where: {
@@ -27,12 +28,37 @@ export const register = async (req: Request<{},{}, AuthRequest>, res: Response<A
             }
         }); 
 
+        if (existingUser && !existingUser.password) {
+            await prisma.user.update({
+                where: {
+                    id: existingUser.id
+                },
+                data: {
+                    password: generatedHashedPassword
+                }
+            })
+            const userData = _.pick(existingUser, ["id", "email", "role"]);
+            const {accessToken, refreshToken} = await issueToken(userData as UserDataPayload)
+
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+            }).cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
+            });
+            res.status(200).json({message: SUCCESS_MESSAGES.USER_CREATED});    
+            return
+        }
+
         if (existingUser) {
             res.status(400).json({message: FAILED_MESSAGES.USER_EXISTS});
             return
-        }   
-
-        const generatedHashedPassword: string = await hashString(password);
+        } 
 
         const newUser = await prisma.user.create({
             data: {
@@ -75,37 +101,44 @@ export const login = async (req: Request<{},{}, AuthRequest>, res: Response<Auth
                 email: email
             }
         });
+
+        if (existingUser && !existingUser.password) {
+            res.status(400).json({message: FAILED_MESSAGES.LOGIN_FAILED_USE_SOCIAL_AUTH});
+            return
+        }
         
-        if (!existingUser || existingUser.password === null) {
+        if (existingUser && existingUser.password) {
+            const isPasswordValid: boolean = await validateString(password, existingUser.password);
+
+            if (!isPasswordValid) {
+                res.status(400).json({message: FAILED_MESSAGES.INVALID_CREDENTIALS});
+                return
+            }   
+
+            const userData = _.pick(existingUser, ["id", "email", "role"]);
+
+            const { accessToken, refreshToken } = await issueToken(userData as UserDataPayload)
+
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
+            }).cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
+            }); 
+            res.status(200).json({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL});    
+            return
+        }
+
+        if (!existingUser) {
             res.status(400).json({message: FAILED_MESSAGES.INVALID_EMAIL_ADDRESS});
             return
         }     
-
-        
-        const isPasswordValid: boolean = await validateString(password, existingUser.password);
-
-        if (!isPasswordValid) {
-            res.status(400).json({message: FAILED_MESSAGES.INVALID_CREDENTIALS});
-            return
-        }   
-        
-        const userData = _.pick(existingUser, ["id", "email", "role"]);
-
-        const { accessToken, refreshToken } = await issueToken(userData as UserDataPayload)
-                
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'strict',
-            maxAge: envConfig.JWT.REFRESH_TOKEN_EXPIRES_IN * 1000
-        }).cookie('accessToken', accessToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'strict',
-            maxAge: envConfig.JWT.ACCESS_TOKEN_EXPIRES_IN * 1000
-        }); 
-        res.status(200).json({message: SUCCESS_MESSAGES.LOGIN_SUCCESSFUL});    
-        return 
+ 
     }catch(error) {
         console.error(error)
         res.status(500).json({message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR});
