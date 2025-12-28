@@ -16,6 +16,11 @@ interface EnvConfig {
       CLIENT_SECRET: string,
       REDIRECT_URI: string
     }
+  },
+  CLOUDINARY: {
+    CLOUD_NAME: string,
+    API_KEY: string,
+    API_SECRET: string
   }
 }
 
@@ -33,5 +38,10 @@ export const envConfig: EnvConfig = {
       CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET as string,
       REDIRECT_URI : process.env.GOOGLE_REDIRECT_URI as string   
     }
+  },
+  CLOUDINARY: {
+    CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME as string,
+    API_KEY: process.env.CLOUDINARY_API_KEY as string,
+    API_SECRET: process.env.CLOUDINARY_API_SECRET as string
   }
 }
